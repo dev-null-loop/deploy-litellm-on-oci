@@ -1,0 +1,34 @@
+redis_clusters = {
+  litellm = {
+    compartment        = "application"
+    display_name       = "litellm-redis"
+    node_count         = 2
+    node_memory_in_gbs = 2
+    nsgs               = ["redis"]
+    software_version   = "V7_0"
+    subnet             = "redis"
+  }
+}
+
+# hashed_passwords must contain a bcrypt hash of the same plaintext stored in
+# the redis_password Vault secret.
+redis_users = {
+  litellm = {
+    acl_string  = "on ~* &* +@all"
+    compartment = "application"
+    authentication_mode = {
+      authentication_type = "PASSWORD"
+      hashed_passwords    = ["..."]
+    }
+    description = "LiteLLM Redis user"
+    name        = "litellm"
+    status      = "ON"
+  }
+}
+
+redis_cluster_user_attachments = {
+  litellm = {
+    redis_cluster = "litellm"
+    redis_users   = ["litellm"]
+  }
+}

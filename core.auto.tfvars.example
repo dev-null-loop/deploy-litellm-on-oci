@@ -1,0 +1,277 @@
+vcns = {
+  application = {
+    cidr_blocks  = ["10.42.0.0/16"]
+    compartment  = "application"
+    display_name = "litellm-vcn"
+    dns_label    = "litellm"
+  }
+}
+
+internet_gateways = {
+  public = {
+    compartment  = "application"
+    display_name = "litellm-internet-gateway"
+    vcn          = "application"
+  }
+}
+
+nat_gateways = {
+  egress = {
+    compartment  = "application"
+    display_name = "litellm-nat-gateway"
+    vcn          = "application"
+  }
+}
+
+service_gateways = {
+  services = {
+    compartment  = "application"
+    display_name = "litellm-service-gateway"
+    vcn          = "application"
+  }
+}
+
+route_tables = {
+  public = {
+    compartment  = "application"
+    display_name = "litellm-public-routes"
+    vcn          = "application"
+    route_rules = [{
+      destination      = "0.0.0.0/0"
+      destination_type = "CIDR_BLOCK"
+      network_entity   = "ig_public"
+    }]
+  }
+  private = {
+    compartment  = "application"
+    display_name = "litellm-private-routes"
+    vcn          = "application"
+    route_rules = [
+      {
+        destination      = "0.0.0.0/0"
+        destination_type = "CIDR_BLOCK"
+        network_entity   = "ng_egress"
+      },
+      {
+        destination      = "services"
+        destination_type = "SERVICE_CIDR_BLOCK"
+        network_entity   = "sg_services"
+      },
+    ]
+  }
+}
+
+security_lists = {
+  private = {
+    compartment  = "application"
+    display_name = "litellm-private-security-list"
+    vcn          = "application"
+  }
+  public = {
+    compartment  = "application"
+    display_name = "litellm-public-security-list"
+    vcn          = "application"
+  }
+}
+
+subnets = {
+  api = {
+    cidr_block     = "10.42.1.0/24"
+    compartment    = "application"
+    display_name   = "litellm-oke-api"
+    dns_label      = "api"
+    route_table    = "private"
+    security_lists = ["private"]
+    vcn            = "application"
+  }
+  workers = {
+    cidr_block     = "10.42.2.0/23"
+    compartment    = "application"
+    display_name   = "litellm-workers"
+    dns_label      = "workers"
+    route_table    = "private"
+    security_lists = ["private"]
+    vcn            = "application"
+  }
+  pods = {
+    cidr_block     = "10.42.4.0/21"
+    compartment    = "application"
+    display_name   = "litellm-pods"
+    dns_label      = "pods"
+    route_table    = "private"
+    security_lists = ["private"]
+    vcn            = "application"
+  }
+  load_balancer = {
+    cidr_block                = "10.42.12.0/24"
+    compartment               = "application"
+    display_name              = "litellm-load-balancer"
+    dns_label                 = "lb"
+    prohibit_internet_ingress = false
+    route_table               = "public"
+    security_lists            = ["public"]
+    vcn                       = "application"
+  }
+  data = {
+    cidr_block     = "10.42.13.0/24"
+    compartment    = "application"
+    display_name   = "litellm-postgresql"
+    dns_label      = "data"
+    route_table    = "private"
+    security_lists = ["private"]
+    vcn            = "application"
+  }
+  redis = {
+    cidr_block     = "10.42.14.0/24"
+    compartment    = "application"
+    display_name   = "litellm-redis"
+    dns_label      = "redis"
+    route_table    = "private"
+    security_lists = ["private"]
+    vcn            = "application"
+  }
+}
+
+nsgs = {
+  load_balancer = { compartment = "application", display_name = "litellm-load-balancer", vcn = "application" }
+  oke_api       = { compartment = "application", display_name = "litellm-oke-api", vcn = "application" }
+  oke_workers   = { compartment = "application", display_name = "litellm-oke-workers", vcn = "application" }
+  pods          = { compartment = "application", display_name = "litellm-pods", vcn = "application" }
+  postgresql    = { compartment = "application", display_name = "litellm-postgresql", vcn = "application" }
+  redis         = { compartment = "application", display_name = "litellm-redis", vcn = "application" }
+}
+
+nsg_rules = {
+  load_balancer_https = {
+    nsg         = "load_balancer"
+    direction   = "INGRESS"
+    protocol    = "6"
+    source      = "0.0.0.0/0"
+    source_type = "CIDR_BLOCK"
+    tcp_options = { destination_port_range = { min = 443, max = 443 } }
+  }
+  load_balancer_to_pods = {
+    nsg              = "load_balancer"
+    direction        = "EGRESS"
+    protocol         = "6"
+    destination      = "pods"
+    destination_type = "NETWORK_SECURITY_GROUP"
+    tcp_options      = { destination_port_range = { min = 4000, max = 4000 } }
+  }
+  pods_from_load_balancer = {
+    nsg         = "pods"
+    direction   = "INGRESS"
+    protocol    = "6"
+    source      = "load_balancer"
+    source_type = "NETWORK_SECURITY_GROUP"
+    tcp_options = { destination_port_range = { min = 4000, max = 4000 } }
+  }
+  pods_to_postgresql = {
+    nsg              = "pods"
+    direction        = "EGRESS"
+    protocol         = "6"
+    destination      = "postgresql"
+    destination_type = "NETWORK_SECURITY_GROUP"
+    tcp_options      = { destination_port_range = { min = 5432, max = 5432 } }
+  }
+  postgresql_from_pods = {
+    nsg         = "postgresql"
+    direction   = "INGRESS"
+    protocol    = "6"
+    source      = "pods"
+    source_type = "NETWORK_SECURITY_GROUP"
+    tcp_options = { destination_port_range = { min = 5432, max = 5432 } }
+  }
+  pods_to_redis = {
+    nsg              = "pods"
+    direction        = "EGRESS"
+    protocol         = "6"
+    destination      = "redis"
+    destination_type = "NETWORK_SECURITY_GROUP"
+    tcp_options      = { destination_port_range = { min = 6379, max = 6379 } }
+  }
+  redis_from_pods = {
+    nsg         = "redis"
+    direction   = "INGRESS"
+    protocol    = "6"
+    source      = "pods"
+    source_type = "NETWORK_SECURITY_GROUP"
+    tcp_options = { destination_port_range = { min = 6379, max = 6379 } }
+  }
+  pods_https_egress = {
+    nsg              = "pods"
+    direction        = "EGRESS"
+    protocol         = "6"
+    destination      = "0.0.0.0/0"
+    destination_type = "CIDR_BLOCK"
+    tcp_options      = { destination_port_range = { min = 443, max = 443 } }
+  }
+  workers_all_egress = {
+    nsg              = "oke_workers"
+    direction        = "EGRESS"
+    protocol         = "all"
+    destination      = "0.0.0.0/0"
+    destination_type = "CIDR_BLOCK"
+  }
+  workers_from_api = {
+    nsg         = "oke_workers"
+    direction   = "INGRESS"
+    protocol    = "6"
+    source      = "oke_api"
+    source_type = "NETWORK_SECURITY_GROUP"
+    tcp_options = { destination_port_range = { min = 10250, max = 10250 } }
+  }
+  workers_from_workers = {
+    nsg         = "oke_workers"
+    direction   = "INGRESS"
+    protocol    = "all"
+    source      = "oke_workers"
+    source_type = "NETWORK_SECURITY_GROUP"
+  }
+  workers_to_api = {
+    nsg              = "oke_workers"
+    direction        = "EGRESS"
+    protocol         = "6"
+    destination      = "oke_api"
+    destination_type = "NETWORK_SECURITY_GROUP"
+    tcp_options      = { destination_port_range = { min = 6443, max = 6443 } }
+  }
+  pods_from_pods = {
+    nsg         = "pods"
+    direction   = "INGRESS"
+    protocol    = "all"
+    source      = "pods"
+    source_type = "NETWORK_SECURITY_GROUP"
+  }
+  pods_to_pods = {
+    nsg              = "pods"
+    direction        = "EGRESS"
+    protocol         = "all"
+    destination      = "pods"
+    destination_type = "NETWORK_SECURITY_GROUP"
+  }
+  pods_to_api = {
+    nsg              = "pods"
+    direction        = "EGRESS"
+    protocol         = "6"
+    destination      = "oke_api"
+    destination_type = "NETWORK_SECURITY_GROUP"
+    tcp_options      = { destination_port_range = { min = 6443, max = 6443 } }
+  }
+  api_from_vcn = {
+    nsg         = "oke_api"
+    direction   = "INGRESS"
+    protocol    = "6"
+    source      = "10.42.0.0/16"
+    source_type = "CIDR_BLOCK"
+    tcp_options = { destination_port_range = { min = 6443, max = 6443 } }
+  }
+  api_to_workers = {
+    nsg              = "oke_api"
+    direction        = "EGRESS"
+    protocol         = "6"
+    destination      = "oke_workers"
+    destination_type = "NETWORK_SECURITY_GROUP"
+    tcp_options      = { destination_port_range = { min = 10250, max = 10250 } }
+  }
+}

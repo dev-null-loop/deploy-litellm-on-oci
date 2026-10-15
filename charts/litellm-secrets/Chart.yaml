@@ -1,0 +1,7 @@
+apiVersion: v2
+name: litellm-secrets
+description: Synchronize LiteLLM runtime secrets from OCI Vault
+type: application
+version: 0.1.0
+appVersion: "1"
+

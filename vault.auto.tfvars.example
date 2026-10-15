@@ -1,0 +1,88 @@
+vaults = {
+  litellm = {
+    compartment  = "application"
+    display_name = "litellm-vault"
+    vault_type   = "DEFAULT"
+  }
+}
+
+keys = {
+  litellm = {
+    compartment              = "application"
+    display_name             = "litellm-master-key"
+    is_auto_rotation_enabled = true
+    key_shape = {
+      algorithm = "AES"
+      length    = 32
+    }
+    protection_mode = "HSM"
+    vault           = "litellm"
+  }
+}
+
+secrets = {
+  database_password = {
+    compartment            = "application"
+    description            = "LiteLLM PostgreSQL administrator password"
+    enable_auto_generation = true
+    key                    = "litellm"
+    secret_name            = "litellm-database-password"
+    vault                  = "litellm"
+    secret_generation_context = {
+      generation_template = "DBAAS_DEFAULT_PASSWORD"
+      generation_type     = "PASSPHRASE"
+      passphrase_length   = 32
+    }
+  }
+  master_key = {
+    compartment            = "application"
+    description            = "LiteLLM API master key"
+    enable_auto_generation = true
+    key                    = "litellm"
+    secret_name            = "litellm-master-key"
+    vault                  = "litellm"
+    secret_generation_context = {
+      generation_template = "SECRETS_DEFAULT_PASSWORD"
+      generation_type     = "PASSPHRASE"
+      passphrase_length   = 48
+      secret_template     = "sk-%GENERATED_PASSPHRASE%"
+    }
+  }
+  salt_key = {
+    compartment            = "application"
+    description            = "LiteLLM immutable encryption salt"
+    enable_auto_generation = true
+    key                    = "litellm"
+    secret_name            = "litellm-salt-key"
+    vault                  = "litellm"
+    secret_generation_context = {
+      generation_template = "SECRETS_DEFAULT_PASSWORD"
+      generation_type     = "PASSPHRASE"
+      passphrase_length   = 48
+    }
+  }
+  redis_password = {
+    compartment = "application"
+    description = "LiteLLM Redis password"
+    key         = "litellm"
+    secret_name = "litellm-redis-password"
+    vault       = "litellm"
+    secret_content = {
+      content_type = "BASE64"
+      content      = "..."
+      stage        = "CURRENT"
+    }
+  }
+  oci_api_key = {
+    compartment = "application"
+    description = "OCI API signing private key used by LiteLLM"
+    key         = "litellm"
+    secret_name = "litellm-oci-api-key"
+    vault       = "litellm"
+    secret_content = {
+      content_type = "BASE64"
+      content      = "..."
+      stage        = "CURRENT"
+    }
+  }
+}

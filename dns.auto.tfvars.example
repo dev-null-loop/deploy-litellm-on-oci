@@ -1,0 +1,19 @@
+# This randomized example.com zone is intentionally non-deployable. Replace it
+# with an owned domain and delegate the registrar's NS records to OCI DNS.
+dns_zones = {
+  litellm = {
+    compartment = "application"
+    name        = "litellm-a7f3.example.com"
+  }
+}
+
+dns_records = {
+  litellm = {
+    domain = "api.litellm-a7f3.example.com"
+    rtype  = "A"
+    target = "litellm_ingress"
+    ttl    = 60
+    zone   = "litellm"
+  }
+}
+

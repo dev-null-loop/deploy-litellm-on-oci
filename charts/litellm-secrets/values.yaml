@@ -1,0 +1,9 @@
+databasePasswordSecretName: litellm-database-password
+image: ghcr.io/berriai/litellm:v1.90.2-stable
+masterKeySecretName: litellm-master-key
+name: litellm
+namespace: litellm
+ociPrivateKeySecretName: litellm-oci-api-key
+redisPasswordSecretName: litellm-redis-password
+saltKeySecretName: litellm-salt-key
+vaultId: ocid1.vault.oc1..example

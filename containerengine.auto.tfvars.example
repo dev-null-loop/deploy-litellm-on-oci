@@ -1,0 +1,67 @@
+oke_worker_node_image_ids = {
+  oke-worker = "ocid1.image.oc1.eu-frankfurt-1."
+}
+
+clusters = {
+  litellm = {
+    compartment        = "application"
+    name               = "litellm-oke"
+    kubernetes_version = "v1.34.1"
+    vcn                = "application"
+    cluster_pod_network_options = {
+      cni_type = "OCI_VCN_IP_NATIVE"
+    }
+    endpoint_config = {
+      nsgs   = ["oke_api"]
+      subnet = "api"
+    }
+    options = {
+      service_lb_subnets = ["load_balancer"]
+    }
+  }
+}
+
+node_pools = {
+  litellm = {
+    cluster            = "litellm"
+    compartment        = "application"
+    kubernetes_version = "v1.34.1"
+    name               = "litellm-workers"
+    node_shape         = "VM.Standard.E5.Flex"
+    node_shape_config = {
+      memory_in_gbs = 64
+      ocpus         = 4
+    }
+    node_source_details = {
+      image = "oke-worker"
+    }
+    node_config_details = {
+      nsgs = ["oke_workers"]
+      placement_configs = [
+        { availability_domain = 1, subnet = "workers" },
+        { availability_domain = 2, subnet = "workers" },
+        { availability_domain = 3, subnet = "workers" },
+      ]
+      size = 3
+      node_pool_pod_network_option_details = {
+        cni_type          = "OCI_VCN_IP_NATIVE"
+        max_pods_per_node = 31
+        pod_nsgs          = ["pods"]
+        pod_subnets       = ["pods"]
+      }
+    }
+    ssh_public_key = "ssh-rsa ..."
+  }
+}
+
+addons = {
+  native_ingress = {
+    addon_name                       = "NativeIngressController"
+    cluster                          = "litellm"
+    compartment                      = "application"
+    load_balancer_subnet             = "load_balancer"
+    override_existing                = true
+    remove_addon_resources_on_delete = true
+  }
+}
+

@@ -1,0 +1,36 @@
+autoscaling:
+  cpu_target_percent: 70
+  max_replicas: 3
+  min_replicas: 1
+certificateId: ocid1.certificate.oc1..example
+compartmentId: ocid1.compartment.oc1..example
+databaseHost: 10.0.0.10
+databaseName: postgres
+databaseUsername: litellm
+hostname: litellm.example.com
+image: ghcr.io/berriai/litellm:v1.90.2-stable
+ingressClass: litellm
+loadBalancerMaximumMbps: 100
+loadBalancerMinimumMbps: 10
+loadBalancerNsgId: ocid1.networksecuritygroup.oc1..example
+loadBalancerSubnetId: ocid1.subnet.oc1..example
+model: cohere.command-r-plus-08-2024
+modelAlias: oci-genai
+name: litellm
+namespace: litellm
+ociCompartmentId: ocid1.compartment.oc1..example
+ociFingerprint: aa:bb:cc
+ociRegion: eu-frankfurt-1
+ociTenancyId: ocid1.tenancy.oc1..example
+ociUserId: ocid1.user.oc1..example
+redisHost: redis.example.internal
+redisUsername: litellm
+replicas: 2
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+wafPolicyId: ocid1.webappfirewallpolicy.oc1..example

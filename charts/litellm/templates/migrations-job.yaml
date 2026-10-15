@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.name }}-migrations
+  namespace: {{ .Values.namespace }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "0"
+spec:
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.name }}-migrations
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: prisma-migrations
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              DB_PASSWORD="$(python -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["DATABASE_PASSWORD"], safe=""))')"
+              export DATABASE_URL="postgresql://{{ .Values.databaseUsername }}:${DB_PASSWORD}@{{ .Values.databaseHost }}:5432/{{ .Values.databaseName }}"
+              exec python litellm/proxy/prisma_migration.py
+          env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: database-password
+                  name: {{ .Values.name }}-runtime
+

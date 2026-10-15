@@ -1,0 +1,52 @@
+oci_secrets_provider_chart_version = "0.4.2"
+
+litellm = {
+  certificate          = "litellm"
+  cluster              = "litellm"
+  compartment          = "application"
+  dns_record           = "litellm"
+  image                = "ghcr.io/berriai/litellm:v1.90.2-stable"
+  ingress_class        = "litellm"
+  load_balancer_nsg    = "load_balancer"
+  load_balancer_subnet = "load_balancer"
+  name                 = "litellm"
+  namespace            = "litellm"
+  replicas             = 3
+  vault                = "litellm"
+  waf_policy           = "litellm"
+  autoscaling = {
+    cpu_target_percent = 70
+    max_replicas       = 10
+    min_replicas       = 3
+  }
+  database = {
+    database        = "postgres"
+    db_system       = "litellm"
+    password_secret = "database_password"
+    username        = "litellm"
+  }
+  generative_ai = {
+    fingerprint        = "..."
+    model              = "cohere.command-r-plus-08-2024"
+    model_alias        = "oci-genai"
+    private_key_secret = "oci_api_key"
+    user_ocid          = "ocid1.user.oc1.."
+  }
+  load_balancer = {
+    maximum_bandwidth_mbps = 400
+    minimum_bandwidth_mbps = 100
+  }
+  redis = {
+    cluster         = "litellm"
+    password_secret = "redis_password"
+    username        = "litellm"
+  }
+  resources = {
+    limits   = { cpu = "2", memory = "4Gi" }
+    requests = { cpu = "500m", memory = "1Gi" }
+  }
+  secrets = {
+    master_key = "master_key"
+    salt_key   = "salt_key"
+  }
+}

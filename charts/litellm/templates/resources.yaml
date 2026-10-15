@@ -1,0 +1,231 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}-config
+  namespace: {{ .Values.namespace }}
+data:
+  config.yaml: |
+    model_list:
+      - model_name: {{ .Values.modelAlias | quote }}
+        litellm_params:
+          model: {{ printf "oci/%s" .Values.model | quote }}
+          oci_compartment_id: {{ .Values.ociCompartmentId | quote }}
+          oci_fingerprint: {{ .Values.ociFingerprint | quote }}
+          oci_key_file: /mnt/secrets/oci-api-key.pem
+          oci_region: {{ .Values.ociRegion | quote }}
+          oci_tenancy: {{ .Values.ociTenancyId | quote }}
+          oci_user: {{ .Values.ociUserId | quote }}
+    general_settings:
+      master_key: os.environ/LITELLM_MASTER_KEY
+    router_settings:
+      redis_host: os.environ/REDIS_HOST
+      redis_password: os.environ/REDIS_PASSWORD
+      redis_port: 6379
+      redis_username: os.environ/REDIS_USERNAME
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.name }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.name }}
+    spec:
+      serviceAccountName: {{ .Values.name }}
+      containers:
+        - name: litellm
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              DB_PASSWORD="$(python -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["DATABASE_PASSWORD"], safe=""))')"
+              export DATABASE_URL="postgresql://{{ .Values.databaseUsername }}:${DB_PASSWORD}@{{ .Values.databaseHost }}:5432/{{ .Values.databaseName }}"
+              exec litellm --config /etc/litellm/config.yaml --port 4000
+          env:
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: database-password
+                  name: {{ .Values.name }}-runtime
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: master-key
+                  name: {{ .Values.name }}-runtime
+            - name: LITELLM_SALT_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: salt-key
+                  name: {{ .Values.name }}-runtime
+            - name: REDIS_HOST
+              value: {{ .Values.redisHost | quote }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: redis-password
+                  name: {{ .Values.name }}-runtime
+            - name: REDIS_USERNAME
+              value: {{ .Values.redisUsername | quote }}
+            - name: STORE_MODEL_IN_DB
+              value: "True"
+            - name: DISABLE_SCHEMA_UPDATE
+              value: "true"
+          ports:
+            - containerPort: 4000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/liveliness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          volumeMounts:
+            - mountPath: /etc/litellm
+              name: config
+              readOnly: true
+            - mountPath: /mnt/secrets
+              name: secrets
+              readOnly: true
+      topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ .Values.name }}
+          maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+      volumes:
+        - configMap:
+            name: {{ .Values.name }}-config
+          name: config
+        - secret:
+            items:
+              - key: oci-api-key.pem
+                path: oci-api-key.pem
+            secretName: {{ .Values.name }}-runtime
+          name: secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: {{ .Values.name }}
+  type: ClusterIP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.name }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  maxReplicas: {{ .Values.autoscaling.max_replicas }}
+  minReplicas: {{ .Values.autoscaling.min_replicas }}
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: {{ .Values.autoscaling.cpu_target_percent }}
+          type: Utilization
+      type: Resource
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.name }}
+---
+apiVersion: ingress.oraclecloud.com/v1beta1
+kind: IngressClassParameters
+metadata:
+  name: {{ .Values.ingressClass }}
+spec:
+  compartmentId: {{ .Values.compartmentId | quote }}
+  isPrivate: false
+  loadBalancerName: {{ printf "%s-lb" .Values.name | quote }}
+  maxBandwidthMbps: {{ .Values.loadBalancerMaximumMbps }}
+  minBandwidthMbps: {{ .Values.loadBalancerMinimumMbps }}
+  subnetId: {{ .Values.loadBalancerSubnetId | quote }}
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: {{ .Values.ingressClass }}
+  annotations:
+    oci-native-ingress.oraclecloud.com/network-security-group-ids: {{ .Values.loadBalancerNsgId | quote }}
+    oci-native-ingress.oraclecloud.com/waf-policy-ocid: {{ .Values.wafPolicyId | quote }}
+spec:
+  controller: oci.oraclecloud.com/native-ingress-controller
+  parameters:
+    apiGroup: ingress.oraclecloud.com
+    kind: IngressClassParameters
+    name: {{ .Values.ingressClass }}
+    scope: Cluster
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    oci-native-ingress.oraclecloud.com/backend-tls-enabled: "false"
+    oci-native-ingress.oraclecloud.com/certificate-ocid: {{ .Values.certificateId | quote }}
+    oci-native-ingress.oraclecloud.com/healthcheck-path: /health/readiness
+    oci-native-ingress.oraclecloud.com/https-listener-port: "443"
+    oci-native-ingress.oraclecloud.com/listener-ssl-config: '{"protocols":["TLSv1.2","TLSv1.3"]}'
+    oci-native-ingress.oraclecloud.com/policy: ROUND_ROBIN
+spec:
+  ingressClassName: {{ .Values.ingressClass }}
+  rules:
+    - host: {{ .Values.hostname | quote }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: {{ .Values.name }}
+                port:
+                  number: 4000
+            path: /
+            pathType: Prefix

@@ -1,0 +1,34 @@
+waf_policies = {
+  litellm = {
+    compartment  = "application"
+    display_name = "litellm-waf"
+    actions = [
+      { name = "allow", type = "ALLOW" },
+      {
+        name = "rate-limit"
+        type = "RETURN_HTTP_RESPONSE"
+        code = 429
+        body = {
+          type = "STATIC_TEXT"
+          text = "Too many requests"
+        }
+      },
+    ]
+    request_access_control = {
+      default_action_name = "allow"
+    }
+    request_rate_limiting = {
+      rules = [{
+        action_name = "rate-limit"
+        name        = "per-client-rate-limit"
+        type        = "REQUEST_RATE_LIMITING"
+        configurations = [{
+          action_duration_in_seconds = 60
+          period_in_seconds          = 60
+          requests_limit             = 600
+        }]
+      }]
+    }
+  }
+}
+

@@ -1,0 +1,129 @@
+tenancy_ocid     = "ocid1.tenancy.oc1.."
+user_ocid        = "ocid1.user.oc1.."
+fingerprint      = "..."
+private_key_path = "..."
+region           = "..."
+
+compartment_ids = {
+  application = "ocid1.compartment.oc1.."
+}
+
+iam_policies = {
+  litellm = {
+    compartment = "application"
+    description = "Permissions required by LiteLLM and OKE workload identities"
+    name        = "litellm-production"
+    group_statements = [{
+      group                = "litellm-genai"
+      resource             = "generative-ai-family"
+      resource_compartment = "application"
+      verb                 = "use"
+    }]
+    workload_identity_statements = [
+      {
+        cluster              = "litellm"
+        namespace            = "kube-system"
+        resource             = "secret-family"
+        resource_compartment = "application"
+        service_account      = "oci-secrets-store-csi-driver-provider-sa"
+        verb                 = "use"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "load-balancers"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "virtual-network-family"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "use"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "cabundles"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "cabundle-associations"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "leaf-certificates"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "leaf-certificate-bundles"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "read"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "leaf-certificate-versions"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "certificate-associations"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "certificate-authorities"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "read"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "certificate-authority-associations"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "certificate-authority-bundles"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "read"
+      },
+      {
+        cluster              = "litellm"
+        namespace            = "native-ingress-controller-system"
+        resource             = "waf-family"
+        resource_compartment = "application"
+        service_account      = "oci-native-ingress-controller"
+        verb                 = "manage"
+      },
+    ]
+  }
+}
